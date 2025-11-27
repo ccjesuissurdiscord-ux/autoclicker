@@ -22,7 +22,6 @@ jobs:
         
     - name: Build the app without signing
       run: |
-        cd AutoClicker
         xcodebuild -project AutoClicker.xcodeproj \
           -scheme AutoClicker \
           -configuration Release \
@@ -36,9 +35,8 @@ jobs:
         
     - name: Create IPA manually
       run: |
-        cd AutoClicker
         mkdir -p Payload
-        cp -r build/AutoClicker.app Payload/
+        cp -r build/Release-iphoneos/AutoClicker.app Payload/
         zip -r AutoClicker.ipa Payload
         rm -rf Payload
         
@@ -46,6 +44,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: AutoClicker-IPA
-        path: AutoClicker/AutoClicker.ipa
+        path: AutoClicker.ipa
+        retention-days: 30
         retention-days: 30
 
