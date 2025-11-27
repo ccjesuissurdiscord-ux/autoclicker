@@ -25,8 +25,10 @@ jobs:
         xcodebuild -project AutoClicker.xcodeproj -list
         
     - name: Build the app without signing
+      id: build_app
       run: |
-        xcodebuild -project AutoClicker.xcodeproj \
+        # Try with scheme first
+        if xcodebuild -project AutoClicker.xcodeproj \
           -scheme AutoClicker \
           -configuration Release \
           -sdk iphoneos \
@@ -35,28 +37,38 @@ jobs:
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO \
           build \
-          CONFIGURATION_BUILD_DIR=./build || \
-        xcodebuild -project AutoClicker.xcodeproj \
-          -target AutoClicker \
-          -configuration Release \
-          -sdk iphoneos \
-          CODE_SIGN_IDENTITY="" \
-          CODE_SIGNING_REQUIRED=NO \
-          CODE_SIGNING_ALLOWED=NO \
-          build \
-          CONFIGURATION_BUILD_DIR=./build
+          CONFIGURATION_BUILD_DIR=./build 2>&1 | tee build.log; then
+          echo "Build succeeded with scheme"
+        else
+          echo "Build with scheme failed, trying with target..."
+          xcodebuild -project AutoClicker.xcodeproj \
+            -target AutoClicker \
+            -configuration Release \
+            -sdk iphoneos \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build \
+            CONFIGURATION_BUILD_DIR=./build 2>&1 | tee build.log
+        fi
         
     - name: Find built app
       id: find_app
       run: |
-        APP_PATH=$(find ./build -name "AutoClicker.app" -type d | head -1)
+        echo "Searching for AutoClicker.app..."
+        # Search in multiple possible locations
+        APP_PATH=$(find . -name "AutoClicker.app" -type d 2>/dev/null | grep -v ".git" | head -1)
+        
         if [ -z "$APP_PATH" ]; then
-          echo "Error: AutoClicker.app not found in build directory"
-          find ./build -type d -name "*.app" || echo "No .app files found"
+          echo "Error: AutoClicker.app not found"
+          echo "Searching for any .app files..."
+          find . -name "*.app" -type d 2>/dev/null | grep -v ".git" || echo "No .app files found"
+          echo "Build directory contents:"
+          ls -la ./build 2>/dev/null || echo "Build directory does not exist"
           exit 1
         fi
         echo "app_path=$APP_PATH" >> $GITHUB_OUTPUT
-        echo "Found app at: $APP_PATH"
+        echo "✅ Found app at: $APP_PATH"
         
     - name: Create IPA manually
       run: |
