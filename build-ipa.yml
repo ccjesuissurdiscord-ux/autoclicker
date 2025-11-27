@@ -1,0 +1,51 @@
+name: Build iOS App
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Set up Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+        
+    - name: Build the app without signing
+      run: |
+        cd AutoClicker
+        xcodebuild -project AutoClicker.xcodeproj \
+          -scheme AutoClicker \
+          -configuration Release \
+          -sdk iphoneos \
+          -destination 'generic/platform=iOS' \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO \
+          build \
+          CONFIGURATION_BUILD_DIR=./build
+        
+    - name: Create IPA manually
+      run: |
+        cd AutoClicker
+        mkdir -p Payload
+        cp -r build/AutoClicker.app Payload/
+        zip -r AutoClicker.ipa Payload
+        rm -rf Payload
+        
+    - name: Upload IPA artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: AutoClicker-IPA
+        path: AutoClicker/AutoClicker.ipa
+        retention-days: 30
+
